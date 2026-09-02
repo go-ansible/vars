@@ -115,3 +115,89 @@ func TestLayerEmptyByDefault(t *testing.T) {
 		t.Fatalf("Layer(RoleVars) = %v, want empty on a fresh Context", got)
 	}
 }
+
+func TestLayerString(t *testing.T) {
+	cases := []struct {
+		l    Layer
+		want string
+	}{
+		{RoleDefaults, "role_defaults"},
+		{Inventory, "inventory"},
+		{Facts, "facts"},
+		{PlayVars, "play_vars"},
+		{RoleVars, "role_vars"},
+		{BlockVars, "block_vars"},
+		{TaskVars, "task_vars"},
+		{Registered, "registered"},
+		{RoleParams, "role_params"},
+		{ExtraVars, "extra_vars"},
+		{numLayers, "unknown"},
+		{Layer(-1), "unknown"},
+	}
+	for _, c := range cases {
+		if got := c.l.String(); got != c.want {
+			t.Errorf("Layer(%d).String() = %q, want %q", c.l, got, c.want)
+		}
+	}
+}
+
+func TestSetReplacesWholeLayer(t *testing.T) {
+	c := New()
+	c.SetVar(PlayVars, "stale", "gone")
+	c.Set(PlayVars, map[string]any{"a": 1, "b": 2})
+
+	if _, ok := c.Get("stale"); ok {
+		t.Fatal("Set should replace the whole layer, but the stale key survived")
+	}
+	if v, _ := c.Get("a"); v != 1 {
+		t.Fatalf("a = %v, want 1", v)
+	}
+	if v, _ := c.Get("b"); v != 2 {
+		t.Fatalf("b = %v, want 2", v)
+	}
+}
+
+func TestSetIsACopy(t *testing.T) {
+	c := New()
+	src := map[string]any{"a": 1}
+	c.Set(PlayVars, src)
+	src["a"] = 2
+	if v, _ := c.Get("a"); v != 1 {
+		t.Fatalf("mutating the map passed to Set affected the Context: got %v, want 1", v)
+	}
+}
+
+func TestSetVarOnZeroValueContext(t *testing.T) {
+	// The zero value is documented as unusable, but SetVar defends
+	// against a nil layer map (e.g. a Context built without New())
+	// rather than panicking.
+	var c Context
+	c.SetVar(RoleDefaults, "x", "d")
+	if v, _ := c.Get("x"); v != "d" {
+		t.Fatalf("SetVar on a zero-value Context: Get(x) = %v, want d", v)
+	}
+}
+
+func TestWhichNotSet(t *testing.T) {
+	c := New()
+	c.SetVar(RoleDefaults, "x", "d")
+	if l, ok := c.Which("nowhere"); ok {
+		t.Fatalf("Which(nowhere) = %v,%v want _,false", l, ok)
+	}
+}
+
+func TestLayers(t *testing.T) {
+	got := Layers()
+	if len(got) != int(numLayers) {
+		t.Fatalf("Layers() has %d entries, want %d", len(got), numLayers)
+	}
+	want := []Layer{
+		RoleDefaults, Inventory, Facts, PlayVars, RoleVars,
+		BlockVars, TaskVars, Registered, RoleParams, ExtraVars,
+	}
+	for i, l := range want {
+		if got[i] != l {
+			t.Errorf("Layers()[%d] = %v, want %v", i, got[i], l)
+		}
+	}
+}
