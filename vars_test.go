@@ -93,3 +93,25 @@ func TestMergedIsASnapshot(t *testing.T) {
 		t.Fatalf("mutating Merged() result affected the Context: got %v", got)
 	}
 }
+
+func TestLayerReturnsACopy(t *testing.T) {
+	c := New()
+	c.SetVar(RoleDefaults, "x", 1)
+
+	snapshot := c.Layer(RoleDefaults)
+	if snapshot["x"] != 1 {
+		t.Fatalf("Layer(RoleDefaults)[\"x\"] = %v, want 1", snapshot["x"])
+	}
+
+	snapshot["x"] = 2
+	if got, _ := c.Get("x"); got != 1 {
+		t.Fatalf("mutating Layer()'s result affected the Context: got %v", got)
+	}
+}
+
+func TestLayerEmptyByDefault(t *testing.T) {
+	c := New()
+	if got := c.Layer(RoleVars); len(got) != 0 {
+		t.Fatalf("Layer(RoleVars) = %v, want empty on a fresh Context", got)
+	}
+}

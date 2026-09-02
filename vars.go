@@ -96,6 +96,17 @@ func (c *Context) Merged() map[string]any {
 	return out
 }
 
+// Layer returns a copy of one layer's variables — for a caller (like a
+// role's temporary variable push) that needs to save a layer's current
+// content before overwriting it, to restore afterward.
+func (c *Context) Layer(l Layer) map[string]any {
+	out := make(map[string]any, len(c.layers[l]))
+	for k, v := range c.layers[l] {
+		out[k] = v
+	}
+	return out
+}
+
 // Get looks up key in the fully merged view.
 func (c *Context) Get(key string) (any, bool) {
 	v, ok := c.Merged()[key]
