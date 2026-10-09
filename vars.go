@@ -56,6 +56,11 @@ func (l Layer) String() string {
 // layer. The zero value is not usable — use New.
 type Context struct {
 	layers [numLayers]map[string]any
+
+	// untrusted names the variables holding data from outside the
+	// playbook -- see untrusted.go. Copied by Child, so a task scope
+	// inherits what its host knows.
+	untrusted map[string]bool
 }
 
 // New returns an empty Context.
@@ -133,6 +138,11 @@ func (c *Context) Child() *Context {
 		for k, v := range c.layers[l] {
 			child.layers[l][k] = v
 		}
+	}
+	// The child inherits what its parent knows about provenance:
+	// a task scope must not re-render a module result either.
+	for k := range c.untrusted {
+		child.MarkUntrusted(k)
 	}
 	return child
 }
